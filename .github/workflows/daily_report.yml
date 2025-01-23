@@ -1,0 +1,40 @@
+name: Generate and Share Daily Report
+
+on:
+  workflow_dispatch: # 手動トリガーを有効化
+
+jobs:
+  create-daily-report:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Create today's report
+      run: |
+        TODAY=$(date +"%Y-%m-%d")
+        TEMPLATE_FILE="daily_report_template.md"
+        NEW_FILE="${TODAY}_daily_report.md"
+
+        # テンプレートをコピーして本日日付のファイルを作成
+        cp $TEMPLATE_FILE $NEW_FILE
+
+        # GitHubにコミット
+        git config --local user.name "github-actions"
+        git config --local user.email "actions@github.com"
+        git add $NEW_FILE
+        git commit -m "Add daily report for $TODAY"
+        git push
+
+    - name: Send notification to Slack
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      run: |
+        TODAY=$(date +"%Y-%m-%d")
+        REPORT_URL="https://github.com/<ユーザ名>/<リポジトリ名>/blob/main/${TODAY}_daily_report.md"
+
+        # Slack通知を送信
+        curl -X POST -H 'Content-type: application/json' --data "{
+          \"text\": \"本日の日報を作成しました: ${REPORT_URL}\"
+        }" $SLACK_WEBHOOK_URL
